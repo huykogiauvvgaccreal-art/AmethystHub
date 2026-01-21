@@ -1,14 +1,15 @@
 --[[
-    AMETHYST HUB V2.1 | HUTAO LOGIC
+    AMETHYST HUB V2.2 | FIX DISPLAY
     Dev: DUYBEO
     Updates:
-    - ESP Taph & Builder: Updated to use exact Hutao Hub logic (Lines 445-446).
-    - Features: Auto Farm V15, Manual Fix (Legit), Smart ESP (Optimized).
+    - FIX ESP: Moved to PlayerGui (Fixes "No Display" on mobile).
+    - LOBBY LOGIC: Improved Match Detection (Nhanh & Chuẩn hơn).
+    - FEATURES: Auto Farm, Manual Fix, Full ESP (Gen, Killer, Surv, Taph, Builder).
 ]]
 
 game.StarterGui:SetCore("SendNotification", {
     Title = "AMETHYST HUB",
-    Text = "Loading V2.1 (Hutao Logic)...",
+    Text = "Loading V2.2 (Fix Display)...",
     Duration = 3
 })
 
@@ -17,8 +18,8 @@ local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/d
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
 local Window = Fluent:CreateWindow({
-    Title = "AMETHYST HUB V2.1",
-    SubTitle = "Forsaken Script (Hutao Logic)",
+    Title = "AMETHYST HUB V2.2",
+    SubTitle = "Forsaken Script",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true, 
@@ -30,6 +31,7 @@ local Window = Fluent:CreateWindow({
 do
     local CoreGui = game:GetService("CoreGui")
     local TweenService = game:GetService("TweenService")
+    -- Nút vẫn để ở CoreGui để không bị trôi theo màn hình game
     if CoreGui:FindFirstChild("AmethystMinimizeUI") then CoreGui.AmethystMinimizeUI:Destroy() end
     local DragUI = Instance.new("ScreenGui", CoreGui)
     DragUI.Name = "AmethystMinimizeUI"
@@ -201,7 +203,7 @@ do
     Tabs.Player:AddToggle("InfStamina", { Title = "Infinite Stamina", Default = false, Callback = function(V) getgenv().InfStamina = V if StaminaModule and StaminaModule.StaminaLossDisabled ~= nil then StaminaModule.StaminaLossDisabled = V end if V then if StaminaModule then staminaLoop = task.spawn(function() while getgenv().InfStamina do task.wait() if StaminaModule.Stamina then StaminaModule.Stamina = StaminaModule.MaxStamina or 100 end end end) Fluent:Notify({Title = "Stamina", Content = "Active", Duration = 3}) end else if staminaLoop then task.cancel(staminaLoop) end end end })
 end
 
--- --- ESP SYSTEM (HUTAO LOGIC INTEGRATED) ---
+-- --- ESP SYSTEM V2.2 (FIX DISPLAY & LOGIC) ---
 do
     getgenv().ESPGen = false
     getgenv().ESPKiller = false
@@ -210,33 +212,77 @@ do
     getgenv().ESPTaph = false
     getgenv().ESPBuilder = false
     
-    local ESPFolder = Instance.new("Folder", game.CoreGui)
-    ESPFolder.Name = "AmethystESP_V2.1"
+    -- FIX: CHUYỂN ESP VÀO PLAYERGUI ĐỂ HIỂN THỊ TỐT HƠN TRÊN MOBILE
+    local PlayerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
+    if PlayerGui:FindFirstChild("AmethystESP_V2_2") then PlayerGui.AmethystESP_V2_2:Destroy() end
+    
+    local ESPFolder = Instance.new("ScreenGui", PlayerGui)
+    ESPFolder.Name = "AmethystESP_V2_2"
+    ESPFolder.ResetOnSpawn = false
 
     local CloneModels = {["1x1x1x1Zombie"]=true, ["PizzaDeliveryRig"]=true, ["Mafia1"]=true, ["Mafia2"]=true, ["Mafia3"]=true, ["Mafia4"]=true}
     
+    -- LOGIC CHECK LOBBY
     local function IsInMatch()
+        -- Kiểm tra đơn giản hơn: Nếu có folder Players và có con trong đó thì là đang chơi
         local plrs = workspace:FindFirstChild("Players")
-        return plrs and (plrs:FindFirstChild("Survivors") or plrs:FindFirstChild("Killers"))
+        if plrs then
+            if plrs:FindFirstChild("Survivors") or plrs:FindFirstChild("Killers") then
+                return true
+            end
+        end
+        return false
     end
 
+    -- HÀM TẠO ESP (Dùng BillboardGui thay vì Highlight để tương thích 100%)
+    -- Highlight đôi khi bị lỗi trên Mobile, BillboardGui thì luôn hiện.
     local function CreateHighlight(obj, color, nameID, textOverride)
-        local espID = nameID or obj:GetDebugId()
-        if ESPFolder:FindFirstChild(espID) then return end
+        if not obj or not obj.Parent then return end
         
-        local hl = Instance.new("Highlight", ESPFolder)
-        hl.Name = espID; hl.Adornee = obj; hl.FillColor = color; hl.OutlineColor = Color3.new(1,1,1)
-        hl.FillTransparency = 0.5; hl.OutlineTransparency = 0
+        -- Dùng tên object làm ID duy nhất
+        local espName = nameID or obj:GetDebugId()
         
-        local bb = Instance.new("BillboardGui", hl)
-        bb.Adornee = obj; bb.Size = UDim2.new(0,100,0,50); bb.StudsOffset = Vector3.new(0,2,0); bb.AlwaysOnTop = true
+        -- Nếu đã có ESP rồi thì thôi
+        if ESPFolder:FindFirstChild(espName) then return end
+        
+        -- Tạo Folder chứa (để dễ xóa)
+        local Container = Instance.new("Folder", ESPFolder)
+        Container.Name = espName
+        
+        -- 1. Highlight (Nếu máy hỗ trợ)
+        local hl = Instance.new("Highlight")
+        hl.Adornee = obj
+        hl.FillColor = color
+        hl.OutlineColor = Color3.new(1,1,1)
+        hl.FillTransparency = 0.5
+        hl.OutlineTransparency = 0
+        hl.Parent = Container
+        
+        -- 2. Tên & Khoảng cách
+        local bb = Instance.new("BillboardGui")
+        bb.Adornee = obj
+        bb.Size = UDim2.new(0,100,0,50)
+        bb.StudsOffset = Vector3.new(0,3,0)
+        bb.AlwaysOnTop = true
+        bb.Parent = Container
         
         local txt = Instance.new("TextLabel", bb)
-        txt.Size = UDim2.new(1,0,1,0); txt.BackgroundTransparency = 1; txt.TextColor3 = color
-        txt.TextStrokeTransparency = 0; txt.Font = Enum.Font.GothamBold; txt.TextSize = 11
+        txt.Size = UDim2.new(1,0,1,0)
+        txt.BackgroundTransparency = 1
+        txt.TextColor3 = color
+        txt.TextStrokeTransparency = 0
+        txt.Font = Enum.Font.GothamBold
+        txt.TextSize = 12
         txt.Text = textOverride or obj.Name
-
-        obj.AncestryChanged:Connect(function(_, p) if not p then hl:Destroy() end end)
+        
+        -- Tự xóa khi vật thể mất
+        local conn
+        conn = obj.AncestryChanged:Connect(function(_, p)
+            if not p then 
+                Container:Destroy()
+                if conn then conn:Disconnect() end
+            end
+        end)
     end
 
     local function IsKiller(model)
@@ -246,74 +292,84 @@ do
 
     task.spawn(function()
         while true do
-            task.wait(2) -- Optimized Loop
+            task.wait(1) -- Quét mỗi 1 giây
             
+            -- CHECK SẢNH: Nếu không phải trong trận -> XÓA SẠCH
             if not IsInMatch() then
                 ESPFolder:ClearAllChildren()
                 continue
             end
 
-            -- Clean up
-            for _, hl in pairs(ESPFolder:GetChildren()) do
-                if string.find(hl.Name, "_K") and not getgenv().ESPKiller then hl:Destroy() end
-                if string.find(hl.Name, "_S") and not getgenv().ESPSurvivor then hl:Destroy() end
-                if string.find(hl.Name, "_C") and not getgenv().ESPClone then hl:Destroy() end
-                if string.find(hl.Name, "_GEN") and not getgenv().ESPGen then hl:Destroy() end
-                if (string.find(hl.Name, "_Trap") or string.find(hl.Name, "_Bomb")) and not getgenv().ESPTaph then hl:Destroy() end
-                if (string.find(hl.Name, "_Sentry") or string.find(hl.Name, "_Heal")) and not getgenv().ESPBuilder then hl:Destroy() end
+            -- LOGIC XÓA KHI TẮT NÚT
+            for _, container in pairs(ESPFolder:GetChildren()) do
+                if string.find(container.Name, "_K") and not getgenv().ESPKiller then container:Destroy() end
+                if string.find(container.Name, "_S") and not getgenv().ESPSurvivor then container:Destroy() end
+                if string.find(container.Name, "_C") and not getgenv().ESPClone then container:Destroy() end
+                if string.find(container.Name, "_GEN") and not getgenv().ESPGen then container:Destroy() end
+                if (string.find(container.Name, "_Trap") or string.find(container.Name, "_Bomb")) and not getgenv().ESPTaph then container:Destroy() end
+                if (string.find(container.Name, "_Sentry") or string.find(container.Name, "_Heal")) and not getgenv().ESPBuilder then container:Destroy() end
             end
 
-            -- Single Scan
+            -- LOGIC QUÉT VẬT THỂ
             if getgenv().ESPGen or getgenv().ESPKiller or getgenv().ESPSurvivor or getgenv().ESPTaph or getgenv().ESPBuilder or getgenv().ESPClone then
                 
+                -- Quét toàn map
                 for _, obj in pairs(workspace:GetDescendants()) do
-                    if not obj:IsA("Model") and not obj:IsA("BasePart") then continue end
-                    local lowerName = obj.Name:lower()
-
-                    -- GENERATOR
-                    if getgenv().ESPGen and lowerName == "generator" and obj:IsA("Model") then
-                        local p = obj:FindFirstChild("Progress")
-                        if p and p.Value < 100 then CreateHighlight(obj, Color3.fromRGB(170,0,255), obj:GetDebugId().."_GEN", "Generator") end
+                    if not obj:IsA("Model") then continue end
                     
-                    -- TAPH (Trap & Bomb) - LOGIC HUTAO (Line 445)
-                    elseif getgenv().ESPTaph and obj:IsA("Model") then
-                        -- Tripwire (Bẫy dây)
+                    -- GENERATOR
+                    if getgenv().ESPGen and obj.Name == "Generator" then
+                        local p = obj:FindFirstChild("Progress")
+                        if p and p.Value < 100 then 
+                            CreateHighlight(obj, Color3.fromRGB(170,0,255), obj:GetDebugId().."_GEN", "Generator") 
+                        end
+                    
+                    -- TAPH (Dùng Code Hutao: line 445)
+                    elseif getgenv().ESPTaph then
                         if obj.Name:find("TaphTripwire") then
-                            CreateHighlight(obj, Color3.fromRGB(255, 85, 0), obj:GetDebugId().."_Trap", "TRAP (Taph)")
-                        -- Bomb (Subspace)
+                            CreateHighlight(obj, Color3.fromRGB(255, 85, 0), obj:GetDebugId().."_Trap", "TRAP")
                         elseif obj.Name == "SubspaceTripmine" then
                             CreateHighlight(obj, Color3.fromRGB(160, 32, 240), obj:GetDebugId().."_Bomb", "BOMB")
                         end
 
-                    -- BUILDERMAN (Sentry & Dispenser) - LOGIC HUTAO (Line 445)
-                    elseif getgenv().ESPBuilder and obj:IsA("Model") then
-                        -- Dispenser (Trụ Hồi Máu)
+                    -- BUILDERMAN (Dùng Code Hutao: line 445)
+                    elseif getgenv().ESPBuilder then
+                        local lowerName = obj.Name:lower()
                         if lowerName:find("dispenser") then
                             CreateHighlight(obj, Color3.fromRGB(0, 162, 255), obj:GetDebugId().."_Heal", "DISPENSER")
-                        -- Sentry (Trụ Súng)
                         elseif lowerName:find("sentry") then
                             CreateHighlight(obj, Color3.fromRGB(128, 128, 128), obj:GetDebugId().."_Sentry", "SENTRY")
                         end
 
                     -- CLONE
-                    elseif getgenv().ESPClone and obj:IsA("Model") and CloneModels[obj.Name] then
+                    elseif getgenv().ESPClone and CloneModels[obj.Name] then
                         CreateHighlight(obj, Color3.fromRGB(0,255,0), obj.Name.."_C", "NPC")
                     end
                 end
 
-                -- PLAYERS
-                if getgenv().ESPKiller then
-                    local k = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-                    if k then for _,v in pairs(k:GetChildren()) do CreateHighlight(v, Color3.fromRGB(255,0,0), v.Name.."_K") end end
-                end
-
-                if getgenv().ESPSurvivor then
-                    local s = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Survivors")
-                    local LP = game.Players.LocalPlayer
-                    if s then 
-                        for _,v in pairs(s:GetChildren()) do 
-                            if v.Name ~= LP.Name and not IsKiller(v) then CreateHighlight(v, Color3.fromRGB(0,255,255), v.Name.."_S") end 
-                        end 
+                -- PLAYERS (Quét riêng để chuẩn hơn)
+                local playersFolder = workspace:FindFirstChild("Players")
+                if playersFolder then
+                    -- Killer
+                    if getgenv().ESPKiller then
+                        local k = playersFolder:FindFirstChild("Killers")
+                        if k then 
+                            for _,v in pairs(k:GetChildren()) do 
+                                CreateHighlight(v, Color3.fromRGB(255,0,0), v.Name.."_K") 
+                            end 
+                        end
+                    end
+                    -- Survivor
+                    if getgenv().ESPSurvivor then
+                        local s = playersFolder:FindFirstChild("Survivors")
+                        local LP = game.Players.LocalPlayer
+                        if s then 
+                            for _,v in pairs(s:GetChildren()) do 
+                                if v.Name ~= LP.Name and not IsKiller(v) then 
+                                    CreateHighlight(v, Color3.fromRGB(0,255,255), v.Name.."_S") 
+                                end 
+                            end 
+                        end
                     end
                 end
             end
@@ -336,5 +392,5 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 
-Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V2.1 (Hutao Logic)", Duration = 5 })
+Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V2.2 (Fix Display)", Duration = 5 })
 SaveManager:LoadAutoloadConfig()
