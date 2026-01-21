@@ -1,15 +1,14 @@
 --[[
-    AMETHYST HUB V2.2 | STAMINA FIX
+    AMETHYST HUB V2.3 | HUTAO STAMINA EDITION
     Dev: DUYBEO
-    Base: V2.1
+    Base: V2.2
     Updates:
-    - FIXED STAMINA: Dùng phương pháp khóa cứng giá trị (Force Lock 100%).
-    - ESP: Giữ nguyên chuẩn Hutao & Clone từ V2.1.
+    - Infinite Stamina: Replaced with exact Hutao Hub Source Code.
 ]]
 
 game.StarterGui:SetCore("SendNotification", {
     Title = "AMETHYST HUB",
-    Text = "Loading V2.2 (Stamina Fix)...",
+    Text = "Loading V2.3 (Hutao Stamina)...",
     Duration = 3
 })
 
@@ -19,8 +18,8 @@ local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.
 
 -- --- 1. SETUP WINDOW ---
 local Window = Fluent:CreateWindow({
-    Title = "AMETHYST HUB V2.2",
-    SubTitle = "Forsaken (Stamina Fix)",
+    Title = "AMETHYST HUB V2.3",
+    SubTitle = "Forsaken (Hutao Stamina)",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true, 
@@ -47,7 +46,7 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- --- 3. AUTO FARM LOGIC (V1.7 GỐC) ---
+-- --- 3. AUTO FARM LOGIC (V1.7 GỐC - GIỮ NGUYÊN) ---
 do
     local Players = game:GetService("Players")
     local LP = Players.LocalPlayer
@@ -165,39 +164,35 @@ do
     Tabs.Farm:AddButton({Title = "Reset List", Description = "Refresh", Callback = function() IgnoreList = {} Fluent:Notify({Title = "Reset", Content = "OK!", Duration = 2}) end})
 end
 
--- --- 4. INFINITE STAMINA (FIXED - FORCE LOCK) ---
+-- --- 4. INFINITE STAMINA (HUTAO CODE EXACTLY) ---
 do
     getgenv().InfStamina = false
-    local StaminaModule
     
-    -- Lấy Module game
-    pcall(function()
-        StaminaModule = require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting)
-    end)
-
-    -- Loop khóa cứng giá trị (Mạnh hơn V1.7 cũ)
-    task.spawn(function()
-        while true do
-            task.wait(0.2) -- Check nhanh hơn (0.2s)
-            if getgenv().InfStamina and StaminaModule then
-                -- 1. Khóa thanh năng lượng ở mức 100
-                if StaminaModule.Stamina then 
-                    StaminaModule.Stamina = 100 
-                end
-                -- 2. Tắt cơ chế giảm năng lượng của game
-                StaminaModule.StaminaLossDisabled = true
+    -- [HUTAO SOURCE] Stamina Logic
+    local function HutaoStamina()
+        spawn(function()
+            while getgenv().InfStamina do
+                task.wait()
+                pcall(function()
+                    -- Đây là đường dẫn module chuẩn của Hutao
+                    local SprintSystem = require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting)
+                    if SprintSystem then
+                        SprintSystem.Stamina = 100 -- Set Full
+                        SprintSystem.StaminaLossDisabled = true -- Tắt tụt pin
+                    end
+                end)
             end
-        end
-    end)
+        end)
+    end
 
     Tabs.Player:AddToggle("InfStamina", {
-        Title = "Infinite Stamina",
-        Description = "Fixed & Stronger",
+        Title = "Infinite Stamina (Hutao)",
         Default = false,
         Callback = function(value)
             getgenv().InfStamina = value
             if value then
-                Fluent:Notify({Title = "Stamina", Content = "Locked at 100%", Duration = 3})
+                HutaoStamina()
+                Fluent:Notify({Title = "Stamina", Content = "Active (Hutao Code)", Duration = 3})
             end
         end
     })
@@ -213,9 +208,8 @@ do
     getgenv().ESPBuilder = false
     
     local ESPFolder = Instance.new("Folder", game.CoreGui)
-    ESPFolder.Name = "AmethystESP_V2.2"
+    ESPFolder.Name = "AmethystESP_V2.3"
 
-    -- CLONE LIST (HUTAO)
     local CloneModels = {
         ["1x1x1x1Zombie"] = true,     
         ["PizzaDeliveryRig"] = true,  
@@ -268,7 +262,6 @@ do
         while true do
             task.wait(1)
             
-            -- DELETE ON TOGGLE OFF
             for _, hl in pairs(ESPFolder:GetChildren()) do
                 if string.find(hl.Name, "_K") and not getgenv().ESPKiller then hl:Destroy() end
                 if string.find(hl.Name, "_S") and not getgenv().ESPSurvivor then hl:Destroy() end
@@ -360,5 +353,5 @@ SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
 Window:SelectTab(1)
 
-Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V2.2 (Stamina Fix)!", Duration = 5 })
+Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V2.3 (Hutao Stamina)!", Duration = 5 })
 SaveManager:LoadAutoloadConfig()
