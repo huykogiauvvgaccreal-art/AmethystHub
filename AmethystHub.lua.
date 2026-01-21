@@ -1,15 +1,15 @@
 --[[
-    AMETHYST HUB V1.9 | FINAL ESP EDITION
+    AMETHYST HUB V2.1 | CLONE HUTAO UPDATE
     Dev: DUYBEO
-    Base: V1.7 (Original Farm Logic)
+    Base: V2.0
     Updates:
-    - ESP Clone: Định vị các con rối triệu hồi (Zombie, Mafia, PizzaRig...).
-    - ESP Taph & Builder: Code chuẩn từ Hutao Hub.
+    - Clone ESP: Updated list to match Hutao Hub (Zombie, Pizza, Mafia...).
+    - Logic: Instant Clear when toggled off.
 ]]
 
 game.StarterGui:SetCore("SendNotification", {
     Title = "AMETHYST HUB",
-    Text = "Loading V1.9 (Final ESP)...",
+    Text = "Loading V2.1 (Hutao Clone)...",
     Duration = 3
 })
 
@@ -19,8 +19,8 @@ local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.
 
 -- --- 1. SETUP WINDOW ---
 local Window = Fluent:CreateWindow({
-    Title = "AMETHYST HUB V1.9",
-    SubTitle = "Forsaken (Fix Clone)",
+    Title = "AMETHYST HUB V2.1",
+    SubTitle = "Forsaken (Hutao Logic)",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true, 
@@ -47,7 +47,7 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- --- 3. AUTO FARM LOGIC (V1.7 GỐC) ---
+-- --- 3. AUTO FARM LOGIC (V1.7 GỐC - AN TOÀN) ---
 do
     local Players = game:GetService("Players")
     local LP = Players.LocalPlayer
@@ -111,6 +111,7 @@ do
                                 fireproximityprompt(prompt)
                             end
 
+                            -- Chờ sửa
                             while getgenv().AutoFarm and GetProgress(gen) < 100 do
                                 if prompt then pcall(function() prompt:InputHoldBegin() task.wait() prompt:InputHoldEnd() end) end
                                 if gen:FindFirstChild("Remotes") and gen.Remotes:FindFirstChild("RE") then gen.Remotes.RE:FireServer() end
@@ -165,7 +166,7 @@ do
     Tabs.Farm:AddButton({Title = "Reset List", Description = "Refresh", Callback = function() IgnoreList = {} Fluent:Notify({Title = "Reset", Content = "OK!", Duration = 2}) end})
 end
 
--- --- 4. INFINITE STAMINA (V1.7 GỐC) ---
+-- --- 4. INFINITE STAMINA ---
 do
     getgenv().InfStamina = false
     local staminaLoop, StaminaModule
@@ -194,7 +195,7 @@ do
     })
 end
 
--- --- 5. ESP MANAGER (HUTAO LOGIC + CLONE FIX) ---
+-- --- 5. ESP MANAGER (HUTAO LOGIC) ---
 do
     getgenv().ESPGen = false
     getgenv().ESPKiller = false
@@ -204,14 +205,14 @@ do
     getgenv().ESPBuilder = false
     
     local ESPFolder = Instance.new("Folder", game.CoreGui)
-    ESPFolder.Name = "AmethystESP_V1.9"
+    ESPFolder.Name = "AmethystESP_V2.1"
 
-    -- DANH SÁCH CLONE / SUMMONED PUPPETS
+    -- [HUTAO CLONE LIST]
+    -- Đây là danh sách chuẩn lấy từ Hutao Hub
     local CloneModels = {
         ["1x1x1x1Zombie"] = true,     -- Zombie
         ["PizzaDeliveryRig"] = true,  -- Pizza Rig
-        ["Mafia1"] = true, ["Mafia2"] = true, ["Mafia3"] = true, ["Mafia4"] = true, -- Mafia
-        ["Guest1337"] = true, ["Noob"] = true -- Fake Players
+        ["Mafia1"] = true, ["Mafia2"] = true, ["Mafia3"] = true, ["Mafia4"] = true -- Mafia
     }
 
     local function CreateHighlight(obj, color, nameID, textOverride)
@@ -259,7 +260,7 @@ do
         while true do
             task.wait(1)
             
-            -- XÓA KHI TẮT
+            -- XÓA KHI TẮT (Logic mới: Tắt là xóa ngay)
             for _, hl in pairs(ESPFolder:GetChildren()) do
                 if string.find(hl.Name, "_K") and not getgenv().ESPKiller then hl:Destroy() end
                 if string.find(hl.Name, "_S") and not getgenv().ESPSurvivor then hl:Destroy() end
@@ -299,7 +300,7 @@ do
                 end
             end
 
-            -- CLONE (SUMMONED PUPPETS)
+            -- CLONE (HUTAO LIST) - MÀU XANH LÁ (0, 255, 0)
             if getgenv().ESPClone then
                 for _, obj in pairs(workspace:GetDescendants()) do
                     if obj:IsA("Model") and CloneModels[obj.Name] then
@@ -308,9 +309,7 @@ do
                 end
             end
 
-            -- === HUTAO LOGIC (TAPH & BUILDER) ===
-            
-            -- TAPH: Trap(Orange) & Bomb(Purple)
+            -- TAPH (HUTAO LOGIC)
             if getgenv().ESPTaph then
                 for _, obj in pairs(workspace:GetDescendants()) do
                     if obj:IsA("Model") then
@@ -323,7 +322,7 @@ do
                 end
             end
 
-            -- BUILDER: Sentry(Gray) & Dispenser(Blue)
+            -- BUILDER (HUTAO LOGIC)
             if getgenv().ESPBuilder then
                 for _, obj in pairs(workspace:GetDescendants()) do
                     if obj:IsA("Model") then
@@ -343,8 +342,8 @@ do
     Tabs.Player:AddToggle("ESPKillerToggle", { Title = "Killer ESP", Default = false, Callback = function(V) getgenv().ESPKiller = V end })
     Tabs.Player:AddToggle("ESPSurvivorToggle", { Title = "Survivor ESP", Default = false, Callback = function(V) getgenv().ESPSurvivor = V end })
     
-    -- Clone: Định vị các con rối/quái vật được triệu hồi
-    Tabs.Player:AddToggle("ESPCloneToggle", { Title = "Clone/Puppet ESP", Description = "Summoned Minions", Default = false, Callback = function(V) getgenv().ESPClone = V end })
+    -- Clone: Hutao List (Zombie, Mafia...)
+    Tabs.Player:AddToggle("ESPCloneToggle", { Title = "Clone ESP", Description = "Summoned Puppets", Default = false, Callback = function(V) getgenv().ESPClone = V end })
     
     -- Taph & Builder (Hutao)
     Tabs.Player:AddToggle("ESPTaph", { Title = "Taph ESP (Trap/Bomb)", Description = "Hutao Logic", Default = false, Callback = function(V) getgenv().ESPTaph = V end })
@@ -357,5 +356,5 @@ SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
 Window:SelectTab(1)
 
-Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V1.9 (ESP Fix)!", Duration = 5 })
+Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V2.1 (Clone Hutao)!", Duration = 5 })
 SaveManager:LoadAutoloadConfig()
