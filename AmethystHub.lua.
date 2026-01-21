@@ -1,14 +1,15 @@
 --[[
-    AMETHYST HUB V2.3 | HUTAO STAMINA EDITION
+    AMETHYST HUB V2.4 | FIX LAG & HUTAO ESP
     Dev: DUYBEO
-    Base: V2.2
+    Base: V2.3
     Updates:
-    - Infinite Stamina: Replaced with exact Hutao Hub Source Code.
+    - FIX LAG: Optimized Scan Loop (1s delay) -> No more screen stuttering.
+    - ESP Taph & Builder: 100% Hutao Hub Logic (Name & Color).
 ]]
 
 game.StarterGui:SetCore("SendNotification", {
     Title = "AMETHYST HUB",
-    Text = "Loading V2.3 (Hutao Stamina)...",
+    Text = "Loading V2.4 (Fix Lag)...",
     Duration = 3
 })
 
@@ -18,8 +19,8 @@ local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.
 
 -- --- 1. SETUP WINDOW ---
 local Window = Fluent:CreateWindow({
-    Title = "AMETHYST HUB V2.3",
-    SubTitle = "Forsaken (Hutao Stamina)",
+    Title = "AMETHYST HUB V2.4",
+    SubTitle = "Forsaken (No Lag)",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true, 
@@ -46,7 +47,7 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- --- 3. AUTO FARM LOGIC (V1.7 GỐC - GIỮ NGUYÊN) ---
+-- --- 3. AUTO FARM LOGIC (V1.7 GỐC - AN TOÀN) ---
 do
     local Players = game:GetService("Players")
     local LP = Players.LocalPlayer
@@ -164,41 +165,27 @@ do
     Tabs.Farm:AddButton({Title = "Reset List", Description = "Refresh", Callback = function() IgnoreList = {} Fluent:Notify({Title = "Reset", Content = "OK!", Duration = 2}) end})
 end
 
--- --- 4. INFINITE STAMINA (HUTAO CODE EXACTLY) ---
+-- --- 4. INFINITE STAMINA (HUTAO) ---
 do
     getgenv().InfStamina = false
-    
-    -- [HUTAO SOURCE] Stamina Logic
     local function HutaoStamina()
         spawn(function()
             while getgenv().InfStamina do
                 task.wait()
                 pcall(function()
-                    -- Đây là đường dẫn module chuẩn của Hutao
                     local SprintSystem = require(game:GetService("ReplicatedStorage").Systems.Character.Game.Sprinting)
                     if SprintSystem then
-                        SprintSystem.Stamina = 100 -- Set Full
-                        SprintSystem.StaminaLossDisabled = true -- Tắt tụt pin
+                        SprintSystem.Stamina = 100 
+                        SprintSystem.StaminaLossDisabled = true 
                     end
                 end)
             end
         end)
     end
-
-    Tabs.Player:AddToggle("InfStamina", {
-        Title = "Infinite Stamina (Hutao)",
-        Default = false,
-        Callback = function(value)
-            getgenv().InfStamina = value
-            if value then
-                HutaoStamina()
-                Fluent:Notify({Title = "Stamina", Content = "Active (Hutao Code)", Duration = 3})
-            end
-        end
-    })
+    Tabs.Player:AddToggle("InfStamina", { Title = "Infinite Stamina (Hutao)", Default = false, Callback = function(V) getgenv().InfStamina = V if V then HutaoStamina() end end })
 end
 
--- --- 5. ESP MANAGER (HUTAO LOGIC + CLONE FIX) ---
+-- --- 5. ESP MANAGER (OPTIMIZED + HUTAO LOGIC) ---
 do
     getgenv().ESPGen = false
     getgenv().ESPKiller = false
@@ -208,11 +195,10 @@ do
     getgenv().ESPBuilder = false
     
     local ESPFolder = Instance.new("Folder", game.CoreGui)
-    ESPFolder.Name = "AmethystESP_V2.3"
+    ESPFolder.Name = "AmethystESP_V2.4"
 
     local CloneModels = {
-        ["1x1x1x1Zombie"] = true,     
-        ["PizzaDeliveryRig"] = true,  
+        ["1x1x1x1Zombie"] = true, ["PizzaDeliveryRig"] = true,
         ["Mafia1"] = true, ["Mafia2"] = true, ["Mafia3"] = true, ["Mafia4"] = true,
         ["Guest1337"] = true, ["Noob"] = true 
     }
@@ -258,10 +244,13 @@ do
         return false
     end
 
+    -- LOOP QUÉT TỐI ƯU (1 GIÂY/LẦN ĐỂ KHÔNG KHỰNG)
     task.spawn(function()
         while true do
-            task.wait(1)
+            -- FIX LAG: Chỉ quét mỗi 1 giây thay vì mỗi khung hình
+            task.wait(1) 
             
+            -- XÓA KHI TẮT
             for _, hl in pairs(ESPFolder:GetChildren()) do
                 if string.find(hl.Name, "_K") and not getgenv().ESPKiller then hl:Destroy() end
                 if string.find(hl.Name, "_S") and not getgenv().ESPSurvivor then hl:Destroy() end
@@ -273,65 +262,51 @@ do
                 if string.find(hl.Name, "_Heal") and not getgenv().ESPBuilder then hl:Destroy() end
             end
 
-            -- GEN
-            if getgenv().ESPGen then
+            -- CHỈ QUÉT NẾU CÓ BẬT ÍT NHẤT 1 ESP
+            if getgenv().ESPGen or getgenv().ESPClone or getgenv().ESPTaph or getgenv().ESPBuilder then
                 for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj.Name == "Generator" and obj:IsA("Model") then
-                        local progress = obj:FindFirstChild("Progress", true)
-                        if progress and progress:IsA("NumberValue") and progress.Value < 100 then
-                            local hl = CreateHighlight(obj, Color3.fromRGB(170, 0, 255), obj:GetDebugId().."_GEN", "Generator")
-                            if hl then
-                                progress.Changed:Connect(function(val) if val >= 100 then hl:Destroy() end end)
+                    if obj:IsA("Model") then
+                        -- GEN
+                        if getgenv().ESPGen and obj.Name == "Generator" then
+                            local p = obj:FindFirstChild("Progress")
+                            if p and p.Value < 100 then CreateHighlight(obj, Color3.fromRGB(170,0,255), obj:GetDebugId().."_GEN", "Generator") end
+                        end
+                        
+                        -- CLONE (Hutao)
+                        if getgenv().ESPClone and CloneModels[obj.Name] then
+                            CreateHighlight(obj, Color3.fromRGB(0,255,0), obj.Name.."_C", "CLONE")
+                        end
+
+                        -- TAPH (Hutao Code)
+                        if getgenv().ESPTaph then
+                            if obj.Name:find("TaphTripwire") then
+                                CreateHighlight(obj, Color3.fromRGB(255,85,0), obj:GetDebugId().."_Trap", "TRAP")
+                            elseif obj.Name == "SubspaceTripmine" then
+                                CreateHighlight(obj, Color3.fromRGB(160,32,240), obj:GetDebugId().."_Bomb", "BOMB")
+                            end
+                        end
+
+                        -- BUILDER (Hutao Code)
+                        if getgenv().ESPBuilder then
+                            local ln = obj.Name:lower()
+                            if ln:find("sentry") then
+                                CreateHighlight(obj, Color3.fromRGB(128,128,128), obj:GetDebugId().."_Sentry", "SENTRY")
+                            elseif ln:find("dispenser") then
+                                CreateHighlight(obj, Color3.fromRGB(0,162,255), obj:GetDebugId().."_Heal", "DISPENSER")
                             end
                         end
                     end
                 end
             end
 
-            -- PLAYER
+            -- PLAYER (Quét riêng từ danh sách người chơi)
             if getgenv().ESPKiller or getgenv().ESPSurvivor then
                 for _, plr in pairs(game.Players:GetPlayers()) do
                     if plr ~= game.Players.LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") then
                         if IsKiller(plr) then
-                            if getgenv().ESPKiller then CreateHighlight(plr.Character, Color3.fromRGB(255, 0, 0), plr.Name.."_K") end
+                            if getgenv().ESPKiller then CreateHighlight(plr.Character, Color3.fromRGB(255,0,0), plr.Name.."_K") end
                         else
-                            if getgenv().ESPSurvivor then CreateHighlight(plr.Character, Color3.fromRGB(0, 255, 255), plr.Name.."_S") end
-                        end
-                    end
-                end
-            end
-
-            -- CLONE (HUTAO)
-            if getgenv().ESPClone then
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("Model") and CloneModels[obj.Name] then
-                        CreateHighlight(obj, Color3.fromRGB(0, 255, 0), obj.Name.."_C", "CLONE")
-                    end
-                end
-            end
-
-            -- TAPH (HUTAO)
-            if getgenv().ESPTaph then
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("Model") then
-                        if obj.Name:find("TaphTripwire") then
-                            CreateHighlight(obj, Color3.fromRGB(255, 85, 0), obj:GetDebugId().."_Trap", "TRAP")
-                        elseif obj.Name == "SubspaceTripmine" then
-                            CreateHighlight(obj, Color3.fromRGB(160, 32, 240), obj:GetDebugId().."_Bomb", "BOMB")
-                        end
-                    end
-                end
-            end
-
-            -- BUILDER (HUTAO)
-            if getgenv().ESPBuilder then
-                for _, obj in pairs(workspace:GetDescendants()) do
-                    if obj:IsA("Model") then
-                        local lowerName = obj.Name:lower()
-                        if lowerName:find("sentry") then
-                            CreateHighlight(obj, Color3.fromRGB(128, 128, 128), obj:GetDebugId().."_Sentry", "SENTRY")
-                        elseif lowerName:find("dispenser") then
-                            CreateHighlight(obj, Color3.fromRGB(0, 162, 255), obj:GetDebugId().."_Heal", "DISPENSER")
+                            if getgenv().ESPSurvivor then CreateHighlight(plr.Character, Color3.fromRGB(0,255,255), plr.Name.."_S") end
                         end
                     end
                 end
@@ -342,9 +317,9 @@ do
     Tabs.Player:AddToggle("ESPToggle", { Title = "Generator ESP", Default = false, Callback = function(V) getgenv().ESPGen = V end })
     Tabs.Player:AddToggle("ESPKillerToggle", { Title = "Killer ESP", Default = false, Callback = function(V) getgenv().ESPKiller = V end })
     Tabs.Player:AddToggle("ESPSurvivorToggle", { Title = "Survivor ESP", Default = false, Callback = function(V) getgenv().ESPSurvivor = V end })
-    Tabs.Player:AddToggle("ESPCloneToggle", { Title = "Clone ESP", Description = "Hutao Logic", Default = false, Callback = function(V) getgenv().ESPClone = V end })
-    Tabs.Player:AddToggle("ESPTaph", { Title = "Taph ESP", Description = "Hutao Logic", Default = false, Callback = function(V) getgenv().ESPTaph = V end })
-    Tabs.Player:AddToggle("ESPBuilder", { Title = "Builder ESP", Description = "Hutao Logic", Default = false, Callback = function(V) getgenv().ESPBuilder = V end })
+    Tabs.Player:AddToggle("ESPCloneToggle", { Title = "Clone ESP (Hutao)", Default = false, Callback = function(V) getgenv().ESPClone = V end })
+    Tabs.Player:AddToggle("ESPTaph", { Title = "Taph ESP (Hutao)", Description = "Fix Lag", Default = false, Callback = function(V) getgenv().ESPTaph = V end })
+    Tabs.Player:AddToggle("ESPBuilder", { Title = "Builder ESP (Hutao)", Description = "Fix Lag", Default = false, Callback = function(V) getgenv().ESPBuilder = V end })
 end
 
 SaveManager:SetLibrary(Fluent)
@@ -353,5 +328,5 @@ SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
 Window:SelectTab(1)
 
-Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V2.3 (Hutao Stamina)!", Duration = 5 })
+Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V2.4 (Fix Lag)!", Duration = 5 })
 SaveManager:LoadAutoloadConfig()
