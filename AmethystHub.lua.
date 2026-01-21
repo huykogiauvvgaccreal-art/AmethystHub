@@ -1,16 +1,19 @@
 --[[
-    AMETHYST HUB V1.7 | UI FIX (NO ACRYLIC)
+    AMETHYST HUB V2.1 | CHANCE HUTAO PREDICTION
     Dev: DUYBEO
-    Fixes:
-    - Acrylic = false (Sửa lỗi không hiện menu trên Mobile).
-    - Features: Auto Farm V1.7, Stamina, ESP Clean (No Clone/Taph).
+    Base: V1.7 Clean
+    Source: Extracted from Hutao-Deobf-V2.3.0.txt
+    Settings:
+    - Prediction: 0.165 (Hutao Value).
+    - Range: 300 (Hutao Value).
+    - Logic: Chance Gun Only.
 ]]
 
 repeat task.wait() until game:IsLoaded()
 
 game.StarterGui:SetCore("SendNotification", {
     Title = "AMETHYST HUB",
-    Text = "Fixing UI...",
+    Text = "Loading V2.1 (Hutao Chance)...",
     Duration = 3
 })
 
@@ -18,81 +21,158 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
--- --- 1. SETUP WINDOW (ACRYLIC OFF) ---
+-- --- UI SETUP (NO ACRYLIC) ---
 local Window = Fluent:CreateWindow({
-    Title = "AMETHYST HUB V1.7",
-    SubTitle = "Forsaken (Clean Fix)",
+    Title = "AMETHYST HUB V2.1",
+    SubTitle = "Forsaken (Hutao Chance)",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
-    Acrylic = false, -- QUAN TRỌNG: Tắt cái này để hiện menu trên điện thoại
+    Acrylic = false, 
     Theme = "Dark",
     MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- --- 2. MINIMIZE BUTTON ---
+-- --- NÚT THU NHỎ ---
 do
-    local UserInputService = game:GetService("UserInputService")
     local CoreGui = game:GetService("CoreGui")
-    local TweenService = game:GetService("TweenService")
-
-    local ExistingUI = CoreGui:FindFirstChild("AmethystMinimizeUI")
-    if ExistingUI then ExistingUI:Destroy() end
-
-    local DragUI = Instance.new("ScreenGui")
+    if CoreGui:FindFirstChild("AmethystMinimizeUI") then CoreGui.AmethystMinimizeUI:Destroy() end
+    local DragUI = Instance.new("ScreenGui", CoreGui)
     DragUI.Name = "AmethystMinimizeUI"
-    DragUI.ResetOnSpawn = false
-    DragUI.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
-    DragUI.Parent = CoreGui
-
-    local Button = Instance.new("ImageButton")
-    Button.Parent = DragUI
-    Button.Size = UDim2.new(0, 50, 0, 50)
-    Button.Position = UDim2.new(0.1, 0, 0.1, 0)
+    local Button = Instance.new("ImageButton", DragUI)
+    Button.Size = UDim2.fromOffset(50, 50)
+    Button.Position = UDim2.fromScale(0.1, 0.1)
     Button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
     Button.BackgroundTransparency = 0.3
-    Button.BorderSizePixel = 0
-    Button.ClipsDescendants = true
     Button.Image = "rbxassetid://7733960981"
-    Button.ImageColor3 = Color3.fromRGB(170, 0, 255)
     Button.Active = true
-
-    local UICorner = Instance.new("UICorner")
-    UICorner.CornerRadius = UDim.new(1, 0)
-    UICorner.Parent = Button
-
-    local tweenInfo = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-    
-    Button.MouseButton1Click:Connect(function()
-        Window:Minimize()
-        TweenService:Create(Button, tweenInfo, {Size = UDim2.new(0, 45, 0, 45), Rotation = 10}):Play()
-        task.wait(0.1)
-        TweenService:Create(Button, tweenInfo, {Size = UDim2.new(0, 50, 0, 50), Rotation = 0}):Play()
-    end)
-
-    local dragging, dragStart, startPos
-    Button.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true
-            dragStart = input.Position
-            startPos = Button.Position
-            input.Changed:Connect(function() if input.UserInputState == Enum.UserInputState.End then dragging = false end end)
-        end
-    end)
-    Button.InputChanged:Connect(function(input)
-        if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
-            local delta = input.Position - dragStart
-            Button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
+    Button.MouseButton1Click:Connect(function() Window:Minimize() end)
 end
 
 local Tabs = {
     Farm = Window:AddTab({ Title = "Auto Farm", Icon = "sword" }),
+    Combat = Window:AddTab({ Title = "Chance Aimbot", Icon = "crosshair" }), 
     Player = Window:AddTab({ Title = "Visuals (ESP)", Icon = "eye" }),
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- --- 3. AUTO FARM LOGIC (V1.7 GỐC) ---
+-- =================================================================
+-- 1. HUTAO CHANCE AIMBOT (PREDICTION 0.165)
+-- =================================================================
+do
+    -- [HUTAO SETTINGS FROM FILE]
+    getgenv().AimbotEnabled = false
+    getgenv().PredictAmount = 0.165 -- Giá trị chuẩn từ file Hutao
+    getgenv().TargetRange = 300     -- Giá trị chuẩn từ file Hutao
+    
+    local Players = game:GetService("Players")
+    local RunService = game:GetService("RunService")
+    local UserInputService = game:GetService("UserInputService")
+    local LocalPlayer = Players.LocalPlayer
+    local Camera = workspace.CurrentCamera
+    
+    local Aiming = false
+    local Target = nil
+
+    local function IsKiller(plr)
+        if plr.Team and plr.Team.Name == "Killers" then return true end
+        if plr.Character and plr.Character.Parent and plr.Character.Parent.Name == "Killers" then return true end
+        return false
+    end
+
+    local function GetClosestTarget()
+        local closestDist = getgenv().TargetRange
+        local closestPlr = nil
+        local mousePos = UserInputService:GetMouseLocation()
+        
+        for _, plr in pairs(Players:GetPlayers()) do
+            if plr ~= LocalPlayer and plr.Character and plr.Character:FindFirstChild("HumanoidRootPart") and plr.Character:FindFirstChild("Humanoid") and plr.Character.Humanoid.Health > 0 then
+                if IsKiller(plr) then
+                    local part = plr.Character:FindFirstChild("HumanoidRootPart")
+                    if part then
+                        local pos, onScreen = Camera:WorldToViewportPoint(part.Position)
+                        if onScreen then
+                            local dist = (Vector2.new(mousePos.X, mousePos.Y) - Vector2.new(pos.X, pos.Y)).Magnitude
+                            if dist < closestDist then
+                                closestDist = dist
+                                closestPlr = part -- Aim vào thân để dễ trúng đạn
+                            end
+                        end
+                    end
+                end
+            end
+        end
+        return closestPlr
+    end
+
+    -- Loop khóa tâm + Prediction
+    RunService.RenderStepped:Connect(function()
+        if getgenv().AimbotEnabled and Aiming and Target and Target.Parent and Target.Parent:FindFirstChild("Humanoid") and Target.Parent.Humanoid.Health > 0 then
+            -- Logic Prediction: Vị trí hiện tại + (Vận tốc * Dự đoán)
+            local predictedPosition = Target.Position + (Target.Velocity * getgenv().PredictAmount)
+            Camera.CFrame = CFrame.new(Camera.CFrame.Position, predictedPosition)
+        end
+    end)
+
+    -- Trigger khi bấm bắn
+    UserInputService.InputBegan:Connect(function(input, processed)
+        if processed or not getgenv().AimbotEnabled then return end
+        
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            local char = LocalPlayer.Character
+            if not char then return end
+            
+            local tool = char:FindFirstChildOfClass("Tool")
+            if tool and tool.Name == "Chance" then -- Chỉ Chance
+                Target = GetClosestTarget()
+                if Target then
+                    Aiming = true
+                    -- Giữ khóa tâm lâu hơn một chút để đạn bay (Prediction cần thời gian)
+                    task.wait(0.3) 
+                    Aiming = false
+                    Target = nil
+                end
+            end
+        end
+    end)
+
+    Tabs.Combat:AddToggle("AimbotToggle", {
+        Title = "Chance Aimbot (Hutao)",
+        Description = "Prediction: 0.165 | Range: 300",
+        Default = false,
+        Callback = function(Value)
+            getgenv().AimbotEnabled = Value
+        end
+    })
+
+    -- Cho phép chỉnh Prediction nếu mạng lag
+    Tabs.Combat:AddSlider("PredSlider", {
+        Title = "Prediction Amount",
+        Description = "Hutao Default: 0.165",
+        Default = 0.165,
+        Min = 0.1,
+        Max = 0.3,
+        Rounding = 3,
+        Callback = function(Value)
+            getgenv().PredictAmount = Value
+        end
+    })
+    
+    Tabs.Combat:AddSlider("RangeSlider", {
+        Title = "Target Range",
+        Description = "Hutao Default: 300",
+        Default = 300,
+        Min = 100,
+        Max = 1000,
+        Rounding = 0,
+        Callback = function(Value)
+            getgenv().TargetRange = Value
+        end
+    })
+end
+
+-- =================================================================
+-- 2. AUTO FARM LOGIC (V1.7 CLEAN)
+-- =================================================================
 do
     local Players = game:GetService("Players")
     local LP = Players.LocalPlayer
@@ -112,8 +192,7 @@ do
         local root = LP.Character and LP.Character:FindFirstChild("HumanoidRootPart")
         if not root then return nil end
         
-        local objects = workspace:GetDescendants()
-        for _, obj in pairs(objects) do
+        for _, obj in pairs(workspace:GetDescendants()) do
             if obj.Name == "Generator" and obj:IsA("Model") then
                 if not IgnoreList[obj] and GetProgress(obj) < 100 then
                     local main = obj.PrimaryPart or obj:FindFirstChild("Main")
@@ -136,51 +215,40 @@ do
                     local char = LP.Character
                     local root = char and char:FindFirstChild("HumanoidRootPart")
                     if not root then return end
-
                     local gen = GetNextGenerator()
-                    
                     if gen then
                         local pivot = gen:GetPivot()
                         if pivot then
                             local dropPos = (pivot * CFrame.new(0, 5, -6)).Position
                             local lookAtPos = pivot.Position
-                            
                             while getgenv().AutoFarm and (root.Position - dropPos).Magnitude > 3 do
                                 root.CFrame = CFrame.lookAt(dropPos, Vector3.new(lookAtPos.X, dropPos.Y, lookAtPos.Z))
                                 root.Velocity = Vector3.zero
                                 task.wait()
                             end
                             if not getgenv().AutoFarm then return end
-
-                            Fluent:Notify({Title = "Auto Farm", Content = "Fixing...", Duration = 1})
                             root.Velocity = Vector3.new(0, -80, 0)
                             task.wait(0.5)
                             
-                            if (root.Position - pivot.Position).Magnitude < 15 then
-                                local prompt = gen:FindFirstChild("Main") and gen.Main:FindFirstChild("Prompt")
-                                if prompt then
-                                    prompt.RequiresLineOfSight = false
-                                    prompt.MaxActivationDistance = 99999
-                                    fireproximityprompt(prompt)
-                                end
+                            local prompt = gen:FindFirstChild("Main") and gen.Main:FindFirstChild("Prompt")
+                            if prompt then
+                                prompt.RequiresLineOfSight = false
+                                prompt.MaxActivationDistance = 99999
+                                fireproximityprompt(prompt)
+                            end
 
-                                while getgenv().AutoFarm and GetProgress(gen) < 100 do
-                                    if prompt then
-                                        pcall(function() prompt:InputHoldBegin() task.wait() prompt:InputHoldEnd() end)
-                                    end
-                                    if gen:FindFirstChild("Remotes") and gen.Remotes:FindFirstChild("RE") then
-                                        gen.Remotes.RE:FireServer()
-                                    end
-                                    Fluent:Notify({Title = "Progress", Content = math.floor(GetProgress(gen)) .. "%", Duration = 1})
-                                    task.wait(1.5)
-                                    if (root.Position - pivot.Position).Magnitude > 15 then break end
-                                end
-                                
-                                if GetProgress(gen) >= 100 then
-                                    IgnoreList[gen] = true
-                                    Fluent:Notify({Title = "Done", Content = "Next Generator", Duration = 2})
-                                    task.wait(0.5)
-                                end
+                            while getgenv().AutoFarm and GetProgress(gen) < 100 do
+                                if prompt then pcall(function() prompt:InputHoldBegin() task.wait() prompt:InputHoldEnd() end) end
+                                if gen:FindFirstChild("Remotes") and gen.Remotes:FindFirstChild("RE") then gen.Remotes.RE:FireServer() end
+                                Fluent:Notify({Title = "Fixing", Content = math.floor(GetProgress(gen)) .. "%", Duration = 1})
+                                task.wait(1.5)
+                                if (root.Position - pivot.Position).Magnitude > 15 then break end
+                            end
+                            
+                            if GetProgress(gen) >= 100 then
+                                IgnoreList[gen] = true
+                                Fluent:Notify({Title = "Done", Content = "Next Generator", Duration = 2})
+                                task.wait(0.5)
                             end
                         end
                     else
@@ -219,82 +287,43 @@ do
         end)
     end
 
-    Tabs.Farm:AddToggle("AutoGenerator", {
-        Title = "Auto Farm (Teleport)",
-        Description = "AFK Mode",
-        Default = false,
-        Callback = function(Value)
-            getgenv().AutoFarm = Value
-            if Value then StartAutoFarm()
-            else
-                if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then
-                    LP.Character.HumanoidRootPart.Anchored = false
-                end
-            end
-        end
-    })
-
-    Tabs.Farm:AddToggle("ManualFixToggle", {
-        Title = "Manual Fix Assist (Đi bộ)",
-        Description = "Tự sửa mỗi 1.5 giây (Legit)",
-        Default = false,
-        Callback = function(Value)
-            getgenv().ManualFix = Value
-            if Value then
-                StartManualFix()
-                Fluent:Notify({Title = "Manual Fix", Content = "Đã bật! Tốc độ: 1.5s/lần", Duration = 3})
-            end
-        end
-    })
-    
+    Tabs.Farm:AddToggle("AutoGenerator", { Title = "Auto Farm (Teleport)", Description = "AFK Mode", Default = false, Callback = function(V) getgenv().AutoFarm = V if V then StartAutoFarm() else if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then LP.Character.HumanoidRootPart.Anchored = false end end end })
+    Tabs.Farm:AddToggle("ManualFixToggle", { Title = "Manual Fix Assist", Description = "Legit (1.5s)", Default = false, Callback = function(V) getgenv().ManualFix = V if V then StartManualFix() end end })
     Tabs.Farm:AddButton({Title = "Reset Generator List", Description = "Refresh List", Callback = function() IgnoreList = {} Fluent:Notify({Title = "Reset", Content = "OK!", Duration = 2}) end})
 end
 
--- --- 4. INFINITE STAMINA ---
+-- =================================================================
+-- 3. INFINITE STAMINA (V1.7 CLEAN)
+-- =================================================================
 do
     getgenv().InfStamina = false
     local staminaLoop
     local StaminaModule
 
     pcall(function()
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        local path = ReplicatedStorage:FindFirstChild("Systems")
-            and ReplicatedStorage.Systems:FindFirstChild("Character")
-            and ReplicatedStorage.Systems.Character:FindFirstChild("Game")
-            and ReplicatedStorage.Systems.Character.Game:FindFirstChild("Sprinting")
-        if path then StaminaModule = require(path) end
+        local sys = game:GetService("ReplicatedStorage"):FindFirstChild("Systems")
+        if sys then StaminaModule = require(sys.Character.Game.Sprinting) end
     end)
 
     local function restoreStamina()
         if not StaminaModule then return end
-        local maxStamina = StaminaModule.MaxStamina or 100
         if StaminaModule.Stamina then
-            if typeof(StaminaModule.SetStamina) == "function" then
-                StaminaModule:SetStamina(maxStamina)
-            elseif typeof(StaminaModule.UpdateStamina) == "function" then
-                StaminaModule:UpdateStamina(maxStamina)
-            else
-                StaminaModule.Stamina = maxStamina
-            end
+            StaminaModule.Stamina = 100
         end
     end
 
     Tabs.Player:AddToggle("InfStamina", {
         Title = "Infinite Stamina",
-        Description = "Full Energy",
         Default = false,
         Callback = function(value)
             getgenv().InfStamina = value
-            if StaminaModule and StaminaModule.StaminaLossDisabled ~= nil then
-                StaminaModule.StaminaLossDisabled = value
-            end
+            if StaminaModule then StaminaModule.StaminaLossDisabled = value end
             if value then
                 if StaminaModule then
                     restoreStamina()
                     staminaLoop = task.spawn(function()
                         while getgenv().InfStamina do task.wait() restoreStamina() end
                     end)
-                    Fluent:Notify({Title = "Stamina", Content = "Active", Duration = 3})
                 end
             else
                 if staminaLoop then task.cancel(staminaLoop) end
@@ -303,14 +332,16 @@ do
     })
 end
 
--- --- 5. ESP MANAGER (CLEAN - NO CLONE/TAPH/BUILDER) ---
+-- =================================================================
+-- 4. ESP MANAGER (CLEAN - HIGHLIGHT)
+-- =================================================================
 do
     getgenv().ESPGen = false
     getgenv().ESPKiller = false
     getgenv().ESPSurvivor = false
     
     local ESPFolder = Instance.new("Folder", game.CoreGui)
-    ESPFolder.Name = "AmethystESP_V1.7_Clean"
+    ESPFolder.Name = "AmethystESP_V2.1_Clean"
 
     local function CreateHighlight(obj, color, nameID, textOverride)
         local espID = nameID or obj:GetDebugId()
@@ -356,8 +387,7 @@ do
     task.spawn(function()
         while true do
             task.wait(1)
-            
-            -- XÓA KHI TẮT
+            -- CLEANUP
             for _, hl in pairs(ESPFolder:GetChildren()) do
                 if string.find(hl.Name, "_K") and not getgenv().ESPKiller then hl:Destroy() end
                 if string.find(hl.Name, "_S") and not getgenv().ESPSurvivor then hl:Destroy() end
@@ -398,9 +428,9 @@ do
         end
     end)
 
-    Tabs.Player:AddToggle("ESPToggle", { Title = "Generator ESP", Description = "Purple", Default = false, Callback = function(V) getgenv().ESPGen = V end })
-    Tabs.Player:AddToggle("ESPKillerToggle", { Title = "Killer ESP", Description = "Red", Default = false, Callback = function(V) getgenv().ESPKiller = V end })
-    Tabs.Player:AddToggle("ESPSurvivorToggle", { Title = "Survivor ESP", Description = "Cyan", Default = false, Callback = function(V) getgenv().ESPSurvivor = V end })
+    Tabs.Player:AddToggle("ESPToggle", { Title = "Generator ESP", Default = false, Callback = function(V) getgenv().ESPGen = V end })
+    Tabs.Player:AddToggle("ESPKillerToggle", { Title = "Killer ESP", Default = false, Callback = function(V) getgenv().ESPKiller = V end })
+    Tabs.Player:AddToggle("ESPSurvivorToggle", { Title = "Survivor ESP", Default = false, Callback = function(V) getgenv().ESPSurvivor = V end })
 end
 
 SaveManager:SetLibrary(Fluent)
@@ -411,5 +441,5 @@ InterfaceManager:BuildInterfaceSection(Tabs.Settings)
 SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 
-Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded UI FIX!", Duration = 5 })
+Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V2.1 (Hutao Chance)!", Duration = 5 })
 SaveManager:LoadAutoloadConfig()
