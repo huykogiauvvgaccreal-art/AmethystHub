@@ -1,15 +1,15 @@
 --[[
-    AMETHYST HUB V2.2 | FIX DISPLAY
+    AMETHYST HUB V1.9 | FINAL ESP EDITION
     Dev: DUYBEO
+    Base: V1.7 (Original Farm Logic)
     Updates:
-    - FIX ESP: Moved to PlayerGui (Fixes "No Display" on mobile).
-    - LOBBY LOGIC: Improved Match Detection (Nhanh & Chuẩn hơn).
-    - FEATURES: Auto Farm, Manual Fix, Full ESP (Gen, Killer, Surv, Taph, Builder).
+    - ESP Clone: Định vị các con rối triệu hồi (Zombie, Mafia, PizzaRig...).
+    - ESP Taph & Builder: Code chuẩn từ Hutao Hub.
 ]]
 
 game.StarterGui:SetCore("SendNotification", {
     Title = "AMETHYST HUB",
-    Text = "Loading V2.2 (Fix Display)...",
+    Text = "Loading V1.9 (Final ESP)...",
     Duration = 3
 })
 
@@ -17,9 +17,10 @@ local Fluent = loadstring(game:HttpGet("https://github.com/dawid-scripts/Fluent/
 local SaveManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/SaveManager.lua"))()
 local InterfaceManager = loadstring(game:HttpGet("https://raw.githubusercontent.com/dawid-scripts/Fluent/master/Addons/InterfaceManager.lua"))()
 
+-- --- 1. SETUP WINDOW ---
 local Window = Fluent:CreateWindow({
-    Title = "AMETHYST HUB V2.2",
-    SubTitle = "Forsaken Script",
+    Title = "AMETHYST HUB V1.9",
+    SubTitle = "Forsaken (Fix Clone)",
     TabWidth = 160,
     Size = UDim2.fromOffset(580, 460),
     Acrylic = true, 
@@ -27,45 +28,17 @@ local Window = Fluent:CreateWindow({
     MinimizeKey = Enum.KeyCode.LeftControl
 })
 
--- --- MINIMIZE BUTTON ---
+-- --- 2. MINIMIZE BUTTON ---
 do
     local CoreGui = game:GetService("CoreGui")
-    local TweenService = game:GetService("TweenService")
-    -- Nút vẫn để ở CoreGui để không bị trôi theo màn hình game
     if CoreGui:FindFirstChild("AmethystMinimizeUI") then CoreGui.AmethystMinimizeUI:Destroy() end
     local DragUI = Instance.new("ScreenGui", CoreGui)
     DragUI.Name = "AmethystMinimizeUI"
     local Button = Instance.new("ImageButton", DragUI)
     Button.Size = UDim2.fromOffset(50, 50)
     Button.Position = UDim2.fromScale(0.1, 0.1)
-    Button.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    Button.BackgroundTransparency = 0.3
     Button.Image = "rbxassetid://7733960981"
-    Button.ImageColor3 = Color3.fromRGB(170, 0, 255)
-    Instance.new("UICorner", Button).CornerRadius = UDim.new(1, 0)
-    
-    local dragging, dragInput, dragStart, startPos
-    Button.InputBegan:Connect(function(input) 
-        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
-            dragging = true; dragStart = input.Position; startPos = Button.Position
-        end
-    end)
-    Button.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch then dragInput = input end
-    end)
-    game:GetService("UserInputService").InputChanged:Connect(function(input)
-        if dragging and input == dragInput then
-            local delta = input.Position - dragStart
-            Button.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
-        end
-    end)
-    Button.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then dragging = false end end)
-    Button.MouseButton1Click:Connect(function() 
-        Window:Minimize()
-        TweenService:Create(Button, TweenInfo.new(0.1), {Size = UDim2.fromOffset(45,45), Rotation = 10}):Play()
-        task.wait(0.1)
-        TweenService:Create(Button, TweenInfo.new(0.1), {Size = UDim2.fromOffset(50,50), Rotation = 0}):Play()
-    end)
+    Button.MouseButton1Click:Connect(function() Window:Minimize() end)
 end
 
 local Tabs = {
@@ -74,7 +47,7 @@ local Tabs = {
     Settings = Window:AddTab({ Title = "Settings", Icon = "settings" })
 }
 
--- --- FARM LOGIC ---
+-- --- 3. AUTO FARM LOGIC (V1.7 GỐC) ---
 do
     local Players = game:GetService("Players")
     local LP = Players.LocalPlayer
@@ -130,31 +103,31 @@ do
                             if not getgenv().AutoFarm then return end
                             root.Velocity = Vector3.new(0, -80, 0)
                             task.wait(0.5)
-                            if (root.Position - pivot.Position).Magnitude < 15 then
-                                local prompt = gen:FindFirstChild("Main") and gen.Main:FindFirstChild("Prompt")
-                                if prompt then
-                                    prompt.RequiresLineOfSight = false
-                                    prompt.MaxActivationDistance = 99999
-                                    fireproximityprompt(prompt)
-                                end
-                                while getgenv().AutoFarm and GetProgress(gen) < 100 do
-                                    if prompt then pcall(function() prompt:InputHoldBegin() task.wait() prompt:InputHoldEnd() end) end
-                                    if gen:FindFirstChild("Remotes") and gen.Remotes:FindFirstChild("RE") then gen.Remotes.RE:FireServer() end
-                                    Fluent:Notify({Title = "Progress", Content = math.floor(GetProgress(gen)) .. "%", Duration = 1})
-                                    task.wait(1.5)
-                                    if (root.Position - pivot.Position).Magnitude > 15 then break end
-                                end
-                                if GetProgress(gen) >= 100 then
-                                    IgnoreList[gen] = true
-                                    Fluent:Notify({Title = "Done", Content = "Next Generator", Duration = 2})
-                                    task.wait(0.5)
-                                end
+                            
+                            local prompt = gen:FindFirstChild("Main") and gen.Main:FindFirstChild("Prompt")
+                            if prompt then
+                                prompt.RequiresLineOfSight = false
+                                prompt.MaxActivationDistance = 99999
+                                fireproximityprompt(prompt)
+                            end
+
+                            while getgenv().AutoFarm and GetProgress(gen) < 100 do
+                                if prompt then pcall(function() prompt:InputHoldBegin() task.wait() prompt:InputHoldEnd() end) end
+                                if gen:FindFirstChild("Remotes") and gen.Remotes:FindFirstChild("RE") then gen.Remotes.RE:FireServer() end
+                                Fluent:Notify({Title = "Fixing", Content = math.floor(GetProgress(gen)) .. "%", Duration = 1})
+                                task.wait(1.5)
+                                if (root.Position - pivot.Position).Magnitude > 15 then break end
+                            end
+                            
+                            if GetProgress(gen) >= 100 then
+                                IgnoreList[gen] = true
+                                Fluent:Notify({Title = "Done", Content = "Next Generator", Duration = 2})
+                                task.wait(0.5)
                             end
                         end
                     else
                         getgenv().AutoFarm = false
-                        Fluent:Notify({Title = "Info", Content = "All Generators Fixed!", Duration = 5})
-                        Tabs.Farm:SetValues({AutoGenerator = false})
+                        Fluent:Notify({Title = "Info", Content = "All Fixed!", Duration = 5})
                     end
                 end)
             end
@@ -188,22 +161,40 @@ do
     end
 
     Tabs.Farm:AddToggle("AutoGenerator", { Title = "Auto Farm (Teleport)", Description = "AFK Mode", Default = false, Callback = function(V) getgenv().AutoFarm = V if V then StartAutoFarm() else if LP.Character and LP.Character:FindFirstChild("HumanoidRootPart") then LP.Character.HumanoidRootPart.Anchored = false end end end })
-    Tabs.Farm:AddToggle("ManualFixToggle", { Title = "Manual Fix Assist", Description = "Legit Mode (1.5s)", Default = false, Callback = function(V) getgenv().ManualFix = V if V then StartManualFix() Fluent:Notify({Title = "Manual Fix", Content = "ON", Duration = 3}) end end })
+    Tabs.Farm:AddToggle("ManualFixToggle", { Title = "Manual Fix Assist", Description = "Legit (1.5s)", Default = false, Callback = function(V) getgenv().ManualFix = V if V then StartManualFix() end end })
+    Tabs.Farm:AddButton({Title = "Reset List", Description = "Refresh", Callback = function() IgnoreList = {} Fluent:Notify({Title = "Reset", Content = "OK!", Duration = 2}) end})
 end
 
--- --- STAMINA ---
+-- --- 4. INFINITE STAMINA (V1.7 GỐC) ---
 do
     getgenv().InfStamina = false
     local staminaLoop, StaminaModule
     pcall(function()
-        local ReplicatedStorage = game:GetService("ReplicatedStorage")
-        local path = ReplicatedStorage:FindFirstChild("Systems") and ReplicatedStorage.Systems:FindFirstChild("Character") and ReplicatedStorage.Systems.Character:FindFirstChild("Game") and ReplicatedStorage.Systems.Character.Game:FindFirstChild("Sprinting")
-        if path then StaminaModule = require(path) end
+        local sys = game.ReplicatedStorage:FindFirstChild("Systems")
+        if sys then StaminaModule = require(sys.Character.Game.Sprinting) end
     end)
-    Tabs.Player:AddToggle("InfStamina", { Title = "Infinite Stamina", Default = false, Callback = function(V) getgenv().InfStamina = V if StaminaModule and StaminaModule.StaminaLossDisabled ~= nil then StaminaModule.StaminaLossDisabled = V end if V then if StaminaModule then staminaLoop = task.spawn(function() while getgenv().InfStamina do task.wait() if StaminaModule.Stamina then StaminaModule.Stamina = StaminaModule.MaxStamina or 100 end end end) Fluent:Notify({Title = "Stamina", Content = "Active", Duration = 3}) end else if staminaLoop then task.cancel(staminaLoop) end end end })
+
+    Tabs.Player:AddToggle("InfStamina", {
+        Title = "Infinite Stamina",
+        Default = false,
+        Callback = function(value)
+            getgenv().InfStamina = value
+            if value then
+                if StaminaModule then
+                    staminaLoop = task.spawn(function()
+                        while getgenv().InfStamina do task.wait() 
+                            if StaminaModule.Stamina then StaminaModule.SetStamina(100) end 
+                        end
+                    end)
+                end
+            else
+                if staminaLoop then task.cancel(staminaLoop) end
+            end
+        end
+    })
 end
 
--- --- ESP SYSTEM V2.2 (FIX DISPLAY & LOGIC) ---
+-- --- 5. ESP MANAGER (HUTAO LOGIC + CLONE FIX) ---
 do
     getgenv().ESPGen = false
     getgenv().ESPKiller = false
@@ -212,163 +203,135 @@ do
     getgenv().ESPTaph = false
     getgenv().ESPBuilder = false
     
-    -- FIX: CHUYỂN ESP VÀO PLAYERGUI ĐỂ HIỂN THỊ TỐT HƠN TRÊN MOBILE
-    local PlayerGui = game.Players.LocalPlayer:WaitForChild("PlayerGui")
-    if PlayerGui:FindFirstChild("AmethystESP_V2_2") then PlayerGui.AmethystESP_V2_2:Destroy() end
-    
-    local ESPFolder = Instance.new("ScreenGui", PlayerGui)
-    ESPFolder.Name = "AmethystESP_V2_2"
-    ESPFolder.ResetOnSpawn = false
+    local ESPFolder = Instance.new("Folder", game.CoreGui)
+    ESPFolder.Name = "AmethystESP_V1.9"
 
-    local CloneModels = {["1x1x1x1Zombie"]=true, ["PizzaDeliveryRig"]=true, ["Mafia1"]=true, ["Mafia2"]=true, ["Mafia3"]=true, ["Mafia4"]=true}
-    
-    -- LOGIC CHECK LOBBY
-    local function IsInMatch()
-        -- Kiểm tra đơn giản hơn: Nếu có folder Players và có con trong đó thì là đang chơi
-        local plrs = workspace:FindFirstChild("Players")
-        if plrs then
-            if plrs:FindFirstChild("Survivors") or plrs:FindFirstChild("Killers") then
-                return true
-            end
-        end
-        return false
-    end
+    -- DANH SÁCH CLONE / SUMMONED PUPPETS
+    local CloneModels = {
+        ["1x1x1x1Zombie"] = true,     -- Zombie
+        ["PizzaDeliveryRig"] = true,  -- Pizza Rig
+        ["Mafia1"] = true, ["Mafia2"] = true, ["Mafia3"] = true, ["Mafia4"] = true, -- Mafia
+        ["Guest1337"] = true, ["Noob"] = true -- Fake Players
+    }
 
-    -- HÀM TẠO ESP (Dùng BillboardGui thay vì Highlight để tương thích 100%)
-    -- Highlight đôi khi bị lỗi trên Mobile, BillboardGui thì luôn hiện.
     local function CreateHighlight(obj, color, nameID, textOverride)
-        if not obj or not obj.Parent then return end
-        
-        -- Dùng tên object làm ID duy nhất
-        local espName = nameID or obj:GetDebugId()
-        
-        -- Nếu đã có ESP rồi thì thôi
-        if ESPFolder:FindFirstChild(espName) then return end
-        
-        -- Tạo Folder chứa (để dễ xóa)
-        local Container = Instance.new("Folder", ESPFolder)
-        Container.Name = espName
-        
-        -- 1. Highlight (Nếu máy hỗ trợ)
-        local hl = Instance.new("Highlight")
-        hl.Adornee = obj
-        hl.FillColor = color
-        hl.OutlineColor = Color3.new(1,1,1)
-        hl.FillTransparency = 0.5
-        hl.OutlineTransparency = 0
-        hl.Parent = Container
-        
-        -- 2. Tên & Khoảng cách
-        local bb = Instance.new("BillboardGui")
-        bb.Adornee = obj
-        bb.Size = UDim2.new(0,100,0,50)
-        bb.StudsOffset = Vector3.new(0,3,0)
-        bb.AlwaysOnTop = true
-        bb.Parent = Container
-        
-        local txt = Instance.new("TextLabel", bb)
-        txt.Size = UDim2.new(1,0,1,0)
-        txt.BackgroundTransparency = 1
-        txt.TextColor3 = color
-        txt.TextStrokeTransparency = 0
-        txt.Font = Enum.Font.GothamBold
-        txt.TextSize = 12
-        txt.Text = textOverride or obj.Name
-        
-        -- Tự xóa khi vật thể mất
-        local conn
-        conn = obj.AncestryChanged:Connect(function(_, p)
-            if not p then 
-                Container:Destroy()
-                if conn then conn:Disconnect() end
-            end
-        end)
+        local espID = nameID or obj:GetDebugId()
+        if not ESPFolder:FindFirstChild(espID) then
+            local hl = Instance.new("Highlight")
+            hl.Name = espID
+            hl.Adornee = obj
+            hl.Parent = ESPFolder
+            hl.FillColor = color
+            hl.OutlineColor = Color3.fromRGB(255, 255, 255)
+            hl.FillTransparency = 0.5
+            hl.OutlineTransparency = 0
+            
+            local bb = Instance.new("BillboardGui")
+            bb.Adornee = obj
+            bb.Size = UDim2.new(0, 100, 0, 50)
+            bb.StudsOffset = Vector3.new(0, 3, 0)
+            bb.AlwaysOnTop = true
+            bb.Parent = hl
+            
+            local txt = Instance.new("TextLabel")
+            txt.Size = UDim2.new(1, 0, 1, 0)
+            txt.BackgroundTransparency = 1
+            txt.TextColor3 = color
+            txt.TextStrokeTransparency = 0
+            txt.Font = Enum.Font.GothamBold
+            txt.TextSize = 12
+            txt.Text = textOverride or obj.Name
+            txt.Parent = bb
+
+            obj.AncestryChanged:Connect(function(_, parent) if not parent then hl:Destroy() end end)
+            return hl
+        end
+        return nil
     end
 
-    local function IsKiller(model)
-        local k = workspace:FindFirstChild("Players") and workspace.Players:FindFirstChild("Killers")
-        return k and model.Parent == k
+    local function IsKiller(player)
+        if player.Team and player.Team.Name == "Killers" then return true end
+        if player.Character and player.Character.Parent and player.Character.Parent.Name == "Killers" then return true end
+        return false
     end
 
     task.spawn(function()
         while true do
-            task.wait(1) -- Quét mỗi 1 giây
+            task.wait(1)
             
-            -- CHECK SẢNH: Nếu không phải trong trận -> XÓA SẠCH
-            if not IsInMatch() then
-                ESPFolder:ClearAllChildren()
-                continue
+            -- XÓA KHI TẮT
+            for _, hl in pairs(ESPFolder:GetChildren()) do
+                if string.find(hl.Name, "_K") and not getgenv().ESPKiller then hl:Destroy() end
+                if string.find(hl.Name, "_S") and not getgenv().ESPSurvivor then hl:Destroy() end
+                if string.find(hl.Name, "_C") and not getgenv().ESPClone then hl:Destroy() end
+                if string.find(hl.Name, "_GEN") and not getgenv().ESPGen then hl:Destroy() end
+                if string.find(hl.Name, "_Trap") and not getgenv().ESPTaph then hl:Destroy() end
+                if string.find(hl.Name, "_Bomb") and not getgenv().ESPTaph then hl:Destroy() end
+                if string.find(hl.Name, "_Sentry") and not getgenv().ESPBuilder then hl:Destroy() end
+                if string.find(hl.Name, "_Heal") and not getgenv().ESPBuilder then hl:Destroy() end
             end
 
-            -- LOGIC XÓA KHI TẮT NÚT
-            for _, container in pairs(ESPFolder:GetChildren()) do
-                if string.find(container.Name, "_K") and not getgenv().ESPKiller then container:Destroy() end
-                if string.find(container.Name, "_S") and not getgenv().ESPSurvivor then container:Destroy() end
-                if string.find(container.Name, "_C") and not getgenv().ESPClone then container:Destroy() end
-                if string.find(container.Name, "_GEN") and not getgenv().ESPGen then container:Destroy() end
-                if (string.find(container.Name, "_Trap") or string.find(container.Name, "_Bomb")) and not getgenv().ESPTaph then container:Destroy() end
-                if (string.find(container.Name, "_Sentry") or string.find(container.Name, "_Heal")) and not getgenv().ESPBuilder then container:Destroy() end
-            end
-
-            -- LOGIC QUÉT VẬT THỂ
-            if getgenv().ESPGen or getgenv().ESPKiller or getgenv().ESPSurvivor or getgenv().ESPTaph or getgenv().ESPBuilder or getgenv().ESPClone then
-                
-                -- Quét toàn map
+            -- GENERATOR
+            if getgenv().ESPGen then
                 for _, obj in pairs(workspace:GetDescendants()) do
-                    if not obj:IsA("Model") then continue end
-                    
-                    -- GENERATOR
-                    if getgenv().ESPGen and obj.Name == "Generator" then
-                        local p = obj:FindFirstChild("Progress")
-                        if p and p.Value < 100 then 
-                            CreateHighlight(obj, Color3.fromRGB(170,0,255), obj:GetDebugId().."_GEN", "Generator") 
+                    if obj.Name == "Generator" and obj:IsA("Model") then
+                        local progress = obj:FindFirstChild("Progress", true)
+                        if progress and progress:IsA("NumberValue") and progress.Value < 100 then
+                            local hl = CreateHighlight(obj, Color3.fromRGB(170, 0, 255), obj:GetDebugId().."_GEN", "Generator")
+                            if hl then
+                                progress.Changed:Connect(function(val) if val >= 100 then hl:Destroy() end end)
+                            end
                         end
-                    
-                    -- TAPH (Dùng Code Hutao: line 445)
-                    elseif getgenv().ESPTaph then
+                    end
+                end
+            end
+
+            -- PLAYER
+            if getgenv().ESPKiller or getgenv().ESPSurvivor then
+                for _, plr in pairs(game.Players:GetPlayers()) do
+                    if plr ~= game.Players.LocalPlayer and plr.Character and plr.Character:FindFirstChild("Humanoid") then
+                        if IsKiller(plr) then
+                            if getgenv().ESPKiller then CreateHighlight(plr.Character, Color3.fromRGB(255, 0, 0), plr.Name.."_K") end
+                        else
+                            if getgenv().ESPSurvivor then CreateHighlight(plr.Character, Color3.fromRGB(0, 255, 255), plr.Name.."_S") end
+                        end
+                    end
+                end
+            end
+
+            -- CLONE (SUMMONED PUPPETS)
+            if getgenv().ESPClone then
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Model") and CloneModels[obj.Name] then
+                        CreateHighlight(obj, Color3.fromRGB(0, 255, 0), obj.Name.."_C", "CLONE")
+                    end
+                end
+            end
+
+            -- === HUTAO LOGIC (TAPH & BUILDER) ===
+            
+            -- TAPH: Trap(Orange) & Bomb(Purple)
+            if getgenv().ESPTaph then
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Model") then
                         if obj.Name:find("TaphTripwire") then
                             CreateHighlight(obj, Color3.fromRGB(255, 85, 0), obj:GetDebugId().."_Trap", "TRAP")
                         elseif obj.Name == "SubspaceTripmine" then
                             CreateHighlight(obj, Color3.fromRGB(160, 32, 240), obj:GetDebugId().."_Bomb", "BOMB")
                         end
-
-                    -- BUILDERMAN (Dùng Code Hutao: line 445)
-                    elseif getgenv().ESPBuilder then
-                        local lowerName = obj.Name:lower()
-                        if lowerName:find("dispenser") then
-                            CreateHighlight(obj, Color3.fromRGB(0, 162, 255), obj:GetDebugId().."_Heal", "DISPENSER")
-                        elseif lowerName:find("sentry") then
-                            CreateHighlight(obj, Color3.fromRGB(128, 128, 128), obj:GetDebugId().."_Sentry", "SENTRY")
-                        end
-
-                    -- CLONE
-                    elseif getgenv().ESPClone and CloneModels[obj.Name] then
-                        CreateHighlight(obj, Color3.fromRGB(0,255,0), obj.Name.."_C", "NPC")
                     end
                 end
+            end
 
-                -- PLAYERS (Quét riêng để chuẩn hơn)
-                local playersFolder = workspace:FindFirstChild("Players")
-                if playersFolder then
-                    -- Killer
-                    if getgenv().ESPKiller then
-                        local k = playersFolder:FindFirstChild("Killers")
-                        if k then 
-                            for _,v in pairs(k:GetChildren()) do 
-                                CreateHighlight(v, Color3.fromRGB(255,0,0), v.Name.."_K") 
-                            end 
-                        end
-                    end
-                    -- Survivor
-                    if getgenv().ESPSurvivor then
-                        local s = playersFolder:FindFirstChild("Survivors")
-                        local LP = game.Players.LocalPlayer
-                        if s then 
-                            for _,v in pairs(s:GetChildren()) do 
-                                if v.Name ~= LP.Name and not IsKiller(v) then 
-                                    CreateHighlight(v, Color3.fromRGB(0,255,255), v.Name.."_S") 
-                                end 
-                            end 
+            -- BUILDER: Sentry(Gray) & Dispenser(Blue)
+            if getgenv().ESPBuilder then
+                for _, obj in pairs(workspace:GetDescendants()) do
+                    if obj:IsA("Model") then
+                        local lowerName = obj.Name:lower()
+                        if lowerName:find("sentry") then
+                            CreateHighlight(obj, Color3.fromRGB(128, 128, 128), obj:GetDebugId().."_Sentry", "SENTRY")
+                        elseif lowerName:find("dispenser") then
+                            CreateHighlight(obj, Color3.fromRGB(0, 162, 255), obj:GetDebugId().."_Heal", "DISPENSER")
                         end
                     end
                 end
@@ -377,20 +340,22 @@ do
     end)
 
     Tabs.Player:AddToggle("ESPToggle", { Title = "Generator ESP", Default = false, Callback = function(V) getgenv().ESPGen = V end })
-    Tabs.Player:AddToggle("ESPTaph", { Title = "Taph ESP (Trap/Bomb)", Default = false, Callback = function(V) getgenv().ESPTaph = V end })
-    Tabs.Player:AddToggle("ESPBuilder", { Title = "Builder ESP (Sentry/Heal)", Default = false, Callback = function(V) getgenv().ESPBuilder = V end })
     Tabs.Player:AddToggle("ESPKillerToggle", { Title = "Killer ESP", Default = false, Callback = function(V) getgenv().ESPKiller = V end })
     Tabs.Player:AddToggle("ESPSurvivorToggle", { Title = "Survivor ESP", Default = false, Callback = function(V) getgenv().ESPSurvivor = V end })
-    Tabs.Player:AddToggle("ESPCloneToggle", { Title = "Clone/NPC ESP", Default = false, Callback = function(V) getgenv().ESPClone = V end })
+    
+    -- Clone: Định vị các con rối/quái vật được triệu hồi
+    Tabs.Player:AddToggle("ESPCloneToggle", { Title = "Clone/Puppet ESP", Description = "Summoned Minions", Default = false, Callback = function(V) getgenv().ESPClone = V end })
+    
+    -- Taph & Builder (Hutao)
+    Tabs.Player:AddToggle("ESPTaph", { Title = "Taph ESP (Trap/Bomb)", Description = "Hutao Logic", Default = false, Callback = function(V) getgenv().ESPTaph = V end })
+    Tabs.Player:AddToggle("ESPBuilder", { Title = "Builder ESP (Sentry/Heal)", Description = "Hutao Logic", Default = false, Callback = function(V) getgenv().ESPBuilder = V end })
 end
 
 SaveManager:SetLibrary(Fluent)
 InterfaceManager:SetLibrary(Fluent)
 SaveManager:IgnoreThemeSettings()
 SaveManager:SetIgnoreIndexes({})
-InterfaceManager:BuildInterfaceSection(Tabs.Settings)
-SaveManager:BuildConfigSection(Tabs.Settings)
 Window:SelectTab(1)
 
-Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V2.2 (Fix Display)", Duration = 5 })
+Fluent:Notify({ Title = "AMETHYST HUB", Content = "Loaded V1.9 (ESP Fix)!", Duration = 5 })
 SaveManager:LoadAutoloadConfig()
